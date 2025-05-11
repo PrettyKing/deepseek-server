@@ -1,0 +1,6 @@
+name = "deepseek-server"
+main = "worker.js"
+compatibility_date = "2025-05-11"
+ 
+[vars]
+DEEPSEEK_API_KEY = "sk-7db70420a5944f379e13b3077033b210"  # 将在 CloudFlare 控制台中设置 
