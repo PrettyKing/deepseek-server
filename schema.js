@@ -6,39 +6,51 @@ export const schema = buildSchema(`
   }
 `);
 
-export const resolvers = {
-  Query: {
-    messages: () => [],
-  },
-  Mutation: {
-    sendMessage: async (_, { content }, context) => {
-      const apiKey = context.env["DEEPSEEK_API_KEY"];
+export const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export const resolvers = (env) => ({
+  askDeepSeek: async ({ prompt }) => {
+    console.log("Received prompt:", prompt); // Log the received prompt
+    try {
+      // DeepSeek API 请求
       const response = await fetch(
         "https://api.deepseek.com/v1/chat/completions",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`, // 替换为你的 DeepSeek API Key
           },
           body: JSON.stringify({
-            messages: [{ role: "user", content }],
             model: "deepseek-chat",
+            messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
-            max_tokens: 500,
+            max_tokens: 1000,
           }),
         }
       );
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error("DeepSeek API 调用失败: " + errText);
-      }
 
       const data = await response.json();
-      return {
-        content: data.choices[0].message.content,
-        role: "assistant",
-      };
-    },
+      // 检查账户余额错误
+      if (data.error && data.error.message === "Insufficient Balance") {
+        return "账户余额不足，请充值后再试。";
+      }
+      // 检查请求错误
+      if (data.error) {
+        return data.error.message;
+      }
+      // 返回 DeepSeek 的回答
+      if (data.choices && data.choices[0]) {
+        return data.choices[0].message.content.trim();
+      }
+      // 如果没有找到答案，返回默认消息
+      return "对不起，我无法回答这个问题。请稍后再试。";
+    } catch (error) {
+      throw new Error(`DeepSeek API error: ${error.message}`);
+    }
   },
-};
+});

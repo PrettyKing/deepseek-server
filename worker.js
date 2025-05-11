@@ -8,10 +8,10 @@ const headers = {
 };
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     try {
       if (request.method === "OPTIONS") {
-        return new Response(null, { headers });
+        return new Response(null, { status: 204, headers });
       }
 
       if (request.method !== "POST") {
@@ -24,11 +24,12 @@ export default {
       const result = await execute({
         schema,
         document: parse(new Source(query)),
-        variableValues: variables,
         rootValue: resolvers(env),
+        variableValues: variables,
       });
 
       return new Response(JSON.stringify(result), {
+        status: 200,
         headers: {
           ...headers,
           "Content-Type": "application/json",
