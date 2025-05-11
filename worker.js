@@ -1,32 +1,43 @@
-import { ApolloServer } from "@apollo/server";
-import { Router } from "itty-router";
-import { typeDefs, resolvers } from "./schema";
+import { execute, parse, Source } from "graphql";
+import { schema, resolvers } from "./schema";
 
-const router = Router();
-const server = new ApolloServer({ typeDefs, resolvers });
 const headers = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-router.post("/chat", async (request, env) => {
-  try {
-    const { query, variables } = await request.json();
-    const result = await server.executeOperation(
-      { query, variables },
-      { contextValue: { env } }
-    );
-    return new Response(JSON.stringify(result.body.singleResult), { headers });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers,
-    });
-  }
-});
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers });
+      }
 
-router.options("/chat", () => new Response(null, { headers }));
-router.all("*", () => new Response("Not Found", { status: 404 }));
+      if (request.method !== "POST") {
+        return new Response("Method Not Allowed", { status: 405, headers });
+      }
+      const body = await request.json();
+      const query = body.query;
+      const variables = body.variables || {};
 
-export default { fetch: router.handle };
+      const result = await execute({
+        schema,
+        document: parse(new Source(query)),
+        variableValues: variables,
+        rootValue: resolvers(env),
+      });
+
+      return new Response(JSON.stringify(result), {
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+      });
+    } catch (error) {
+      return new Response("Internal Server Error: " + error.message, {
+        status: 500,
+      });
+    }
+  },
+};

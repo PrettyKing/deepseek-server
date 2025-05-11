@@ -1,19 +1,10 @@
-import { gql } from "graphql-tag";
+import { buildSchema } from "graphql";
 
-export const typeDefs = gql`
-  type Message {
-    content: String!
-    role: String!
-  }
-
+export const schema = buildSchema(`
   type Query {
-    messages: [Message!]!
+    askDeepSeek(prompt: String!): String!
   }
-
-  type Mutation {
-    sendMessage(content: String!): Message!
-  }
-`;
+`);
 
 export const resolvers = {
   Query: {
@@ -33,6 +24,8 @@ export const resolvers = {
           body: JSON.stringify({
             messages: [{ role: "user", content }],
             model: "deepseek-chat",
+            temperature: 0.7,
+            max_tokens: 500,
           }),
         }
       );
